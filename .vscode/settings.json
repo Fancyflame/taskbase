@@ -1,0 +1,7 @@
+{
+    "[sql]": {
+        "editor.defaultFormatter": "cweijan.vscode-database-client2",
+        "editor.formatOnSave": true
+    },
+    "prettier.requireConfig": true
+}

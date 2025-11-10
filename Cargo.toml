@@ -1,0 +1,15 @@
+[package]
+name = "dbrt"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio.workspace = true
+tokio-postgres.workspace = true
+
+[workspace]
+members = ["."]
+
+[workspace.dependencies]
+tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros"] }
+tokio-postgres = "0.7"

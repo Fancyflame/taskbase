@@ -1,0 +1,8 @@
+[package]
+name = "taskbase"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio.workspace = true
+tokio-postgres.workspace = true

@@ -1,5 +1,5 @@
 [workspace]
-members = ["taskbase"]
+members = ["env-config", "taskbase", "taskbase-inject"]
 resolver = "3"
 
 [workspace.package]
@@ -8,4 +8,8 @@ version = "0.1.0"
 
 [workspace.dependencies]
 tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros"] }
-tokio-postgres = "0.7"
+tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"] }
+chrono = "0.4"
+lazy-env = "0.1"
+anyhow = "1.0"
+log = "0.4"

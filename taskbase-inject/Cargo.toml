@@ -1,0 +1,11 @@
+[package]
+name = "taskbase-inject"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+env-config = { version = "0.1.0", path = "../env-config" }
+log.workspace = true
+tokio.workspace = true
+tokio-postgres.workspace = true

@@ -1,0 +1,7 @@
+[package]
+name = "env-config"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+lazy-env.workspace = true

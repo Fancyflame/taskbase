@@ -12,7 +12,7 @@ macro_rules! include_sql {
 
 const SQLS: &[&str] = &include_sql!["entry.sql", "tasks.sql", "shared_objects.sql",];
 
-pub async fn inject_database() -> Result<()> {
+pub async fn inject_database(drop_schema: bool) -> Result<()> {
     let (mut client, connection) = tokio_postgres::connect(&DATABASE_URL, NoTls).await?;
 
     tokio::spawn(async move {
@@ -22,6 +22,12 @@ pub async fn inject_database() -> Result<()> {
     });
 
     let transaction = client.build_transaction().start().await?;
+
+    if drop_schema {
+        transaction
+            .execute("DROP SCHEMA IF EXISTS _taskbase CASCADE", &[])
+            .await?;
+    }
 
     // 批量执行所有 SQL 语句
     for sql in SQLS {

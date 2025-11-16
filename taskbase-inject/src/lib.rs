@@ -34,7 +34,6 @@ pub async fn inject_database(drop_schema: bool) -> Result<()> {
         transaction.batch_execute(sql).await?;
     }
 
-    // 提交事务
     transaction.commit().await?;
 
     Ok(())

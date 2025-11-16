@@ -1,7 +1,7 @@
 -- 共享对象表
 CREATE TABLE shared_objects (
     id BIGSERIAL PRIMARY KEY,
-    data JSONB NOT NULL
+    data BYTEA NOT NULL
 );
 
 -- 对象引用表：记录每个引用，绑定到 task
@@ -16,7 +16,7 @@ CREATE INDEX idx_shared_object_refs_object_id ON shared_object_refs (object_id);
 
 -- 创建共享对象并返回引用ID
 -- 参数：data - 对象数据，attached_task_id - 关联的任务ID
-CREATE OR REPLACE FUNCTION create_object(data JSONB, attached_task_id BIGINT)
+CREATE OR REPLACE FUNCTION create_object(data BYTEA, attached_task_id BIGINT)
     RETURNS UUID AS -- 返回的是引用ID
 $$
 DECLARE
@@ -24,7 +24,7 @@ DECLARE
     new_ref_id UUID;
 BEGIN
     -- 创建共享对象
-    INSERT INTO shared_objects (data) 
+    INSERT INTO shared_objects (data)
     VALUES (data) 
     RETURNING id INTO new_object_id;
     
@@ -37,21 +37,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 通过引用ID读取共享对象数据
-CREATE OR REPLACE FUNCTION read_object(ref_id UUID)
-    RETURNS JSONB AS
-$$
-DECLARE
-    result_data JSONB;
-BEGIN
-    SELECT so.data INTO result_data
-    FROM shared_object_refs sor
-    JOIN shared_objects so ON sor.object_id = so.id
-    WHERE sor.id = ref_id;
-
-    RETURN result_data;
-END;
-$$ LANGUAGE plpgsql;
+-- 通过引用ID读取共享对象数据（视图方式，可直接查询）
+CREATE VIEW object_data_view AS
+SELECT 
+    sor.id AS ref_id,
+    so.data AS data,
+    sor.object_id,
+    sor.attached_task_id
+FROM shared_object_refs sor
+JOIN shared_objects so ON sor.object_id = so.id;
 
 -- 克隆引用：为同一个对象创建新的引用
 -- 参数：ref_id - 源引用ID，attach_task_id - 新引用关联的任务ID

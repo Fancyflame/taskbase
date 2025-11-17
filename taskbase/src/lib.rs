@@ -1,3 +1,3 @@
-mod db_backend;
+pub mod db_backend;
 
 const SCHEMA: &str = "_taskbase";

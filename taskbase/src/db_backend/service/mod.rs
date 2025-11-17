@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use anyhow::Result;
-use sqlx::{PgPool, postgres::PgListener, query};
+use sqlx::{PgPool, Row, postgres::PgListener, query};
 
 use crate::db_backend::service::channel_name::{build_channel_route, parse_channel_route};
 
@@ -13,19 +13,24 @@ pub struct DbService {
     pool: PgPool,
 }
 
-pub struct WakeMsg {
-    namespace: String,
+#[derive(Clone, Debug)]
+pub struct ReadyTask {
+    pub id: i64,
+    pub namespace: String,
+    pub task_name: String,
+    pub context: Vec<u8>,
 }
 
 impl DbService {
     pub(super) async fn connect(pool: PgPool, ns: impl Iterator<Item = String>) -> Result<Self> {
-        let this = Self {
+        let mut this = Self {
             namespaces: ns.collect(),
             listener: PgListener::connect_with(&pool).await?,
             pool,
         };
 
         this.register_namespace().await?;
+        this.start_listen().await?;
         Ok(this)
     }
 
@@ -58,7 +63,7 @@ impl DbService {
         Ok(())
     }
 
-    pub async fn recv(&mut self) -> Result<HashSet<&str>> {
+    pub async fn recv(&mut self) -> Result<Vec<ReadyTask>> {
         let mut out: HashSet<&str> = HashSet::new();
 
         loop {
@@ -70,7 +75,7 @@ impl DbService {
                 msg
             } else {
                 // 暂时没有消息了，先返回已有的
-                return Ok(out);
+                break;
             };
 
             if let Some(["task_ready", namespace]) = parse_channel_route(msg.channel()) {
@@ -79,6 +84,36 @@ impl DbService {
                 }
             }
         }
+
+        self.fetch_ready_tasks(&out).await
+    }
+
+    async fn fetch_ready_tasks(&self, namespaces: &HashSet<&str>) -> Result<Vec<ReadyTask>> {
+        if namespaces.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let ns_vec: Vec<&str> = namespaces.iter().copied().collect();
+
+        let rows = sqlx::query(
+            "SELECT id, namespace, task_name, context \
+            FROM fetch_tasks($1::text[])", // 使用 SQL 函数过滤 ready 任务
+        )
+        .bind(&ns_vec)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut tasks = Vec::with_capacity(rows.len());
+        for row in rows {
+            tasks.push(ReadyTask {
+                id: row.try_get("id")?,
+                namespace: row.try_get("namespace")?,
+                task_name: row.try_get("task_name")?,
+                context: row.try_get("context")?,
+            });
+        }
+
+        Ok(tasks)
     }
 
     /// 发送通知

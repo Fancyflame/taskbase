@@ -1,5 +1,5 @@
 CREATE TABLE namespaces (
-    id VARCHAR(255) PRIMARY KEY,
+    id VARCHAR(255) PRIMARY KEY
 );
 
 CREATE TYPE task_status AS ENUM (
@@ -14,7 +14,7 @@ CREATE TABLE task_map (
     id BIGSERIAL PRIMARY KEY,
     namespace VARCHAR(255) NOT NULL REFERENCES namespaces(id), --用于执行器找到自己可执行的任务
     task_name VARCHAR(255) NOT NULL,
-    context JSONB NOT NULL,
+    context BYTEA NOT NULL,
     status task_status NOT NULL,
     create_time TIMESTAMPTZ NOT NULL DEFAULT now(),
     update_time TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -71,7 +71,7 @@ $$ LANGUAGE plpgsql;
 -- 获取 ready 任务并更新状态为 processing
 -- 如果行被锁定，会跳过而不是等待锁释放
 CREATE OR REPLACE FUNCTION fetch_tasks(
-    p_namespace VARCHAR(255),
+    p_namespaces VARCHAR(255)[], -- 命名空间列表，命中任意一个即可
     p_limit_count INT DEFAULT 200
 )
     RETURNS SETOF task_map AS
@@ -81,7 +81,7 @@ BEGIN
         WITH ready_task_ids AS (
             SELECT tm.id
             FROM task_map tm
-            WHERE namespace = p_namespace
+            WHERE namespace = ANY(p_namespaces)
             AND tm.status = 'ready'
             FOR UPDATE SKIP LOCKED
             LIMIT p_limit_count
@@ -112,3 +112,38 @@ CREATE TRIGGER trg_update_task_map_update_time
     ON task_map
     FOR EACH ROW
     EXECUTE FUNCTION update_update_time_column();
+
+-- 当 ready 任务数量增加时发出通知
+CREATE OR REPLACE FUNCTION notify_task_ready_changed()
+    RETURNS TRIGGER AS
+$$
+DECLARE
+    channel TEXT;
+BEGIN
+    -- IF NEW.status = 'ready' THEN
+        channel := format('task_ready/%s', NEW.namespace);
+        PERFORM pg_notify(channel, NEW.id::TEXT);
+    -- END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_task_ready_changed
+    AFTER INSERT OR UPDATE OF status
+    ON task_map
+    FOR EACH ROW
+    WHEN (NEW.status = 'ready')
+    EXECUTE FUNCTION notify_task_ready_changed();
+
+-- CREATE TRIGGER trg_tasks_insert_ready
+--     AFTER INSERT ON task_map
+--     FOR EACH ROW
+--     WHEN (NEW.status = 'ready')
+--     EXECUTE FUNCTION notify_task_ready_changed();
+
+-- CREATE TRIGGER trg_tasks_become_ready
+--     AFTER UPDATE OF status ON task_map
+--     FOR EACH ROW
+--     WHEN (NEW.status = 'ready')
+--     EXECUTE FUNCTION notify_task_ready_changed();

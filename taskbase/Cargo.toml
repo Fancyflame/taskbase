@@ -4,5 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 tokio.workspace = true
-tokio-postgres.workspace = true
+sqlx.workspace = true
+log.workspace = true
+env-config = { version = "0.1.0", path = "../env-config" }
+const_format.workspace = true

@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use crate::{SCHEMA, db_backend::service::DbService};
 
-mod service;
+pub mod service;
 
 pub struct DbBackend {
     pool: PgPool,

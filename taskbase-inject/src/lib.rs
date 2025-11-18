@@ -10,7 +10,12 @@ macro_rules! include_sql {
     };
 }
 
-const SQLS: &[&str] = &include_sql!["entry.sql", "tasks.sql", "shared_objects.sql",];
+const SQLS: &[&str] = &include_sql![
+    "entry.sql",
+    "tasks.sql",
+    "task_processing.sql",
+    "shared_objects.sql",
+];
 
 pub async fn inject_database(drop_schema: bool) -> Result<()> {
     let (mut client, connection) = tokio_postgres::connect(&DATABASE_URL, NoTls).await?;

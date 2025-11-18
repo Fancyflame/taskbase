@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
         .await?;
 
     println!("开始监听命名空间: {:?}", namespaces);
-    println!("可通过 pg_notify('task_ready/<namespace>', '<payload>') 触发");
+    println!("可通过 pg_notify('task_ready/<namespace>') 触发");
 
     loop {
         let tasks = service.fetch_ready_tasks().await?;
